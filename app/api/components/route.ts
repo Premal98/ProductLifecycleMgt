@@ -1,6 +1,7 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getOrgId, getSessionUser } from '@/lib/auth';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/http';
+import { canAccess } from '@/lib/rbac';
 import { componentSchema } from '@/lib/validation';
 import { createSupabaseServerClient } from '@/lib/supabaseClient';
 
@@ -8,6 +9,10 @@ export async function GET(req: NextRequest) {
   try {
     const session = await getSessionUser(req);
     if (!session) return unauthorized();
+
+    if (!canAccess(session.role, 'boms', 'read')) {
+      return forbidden('Insufficient permissions');
+    }
 
     const { searchParams } = new URL(req.url);
     const bomId = searchParams.get('bom_id');
@@ -28,6 +33,10 @@ export async function POST(req: NextRequest) {
   try {
     const session = await getSessionUser(req);
     if (!session) return unauthorized();
+
+    if (!canAccess(session.role, 'boms', 'write')) {
+      return forbidden('Insufficient permissions');
+    }
 
     const body = await req.json();
     const parsed = componentSchema.safeParse(body);

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { badRequest, ok, serverError, unauthorized } from '@/lib/http';
 import { applySessionCookies, loginWithEmail, signupWithEmail } from '@/services/authService';
 
@@ -19,15 +19,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === 'signup') {
-      if (!organization_name) {
-        return badRequest('organization_name is required for signup');
+      const organizationName = organization_name?.trim() ?? '';
+      const fullName = full_name?.trim() ?? '';
+
+      if (!organizationName || !fullName) {
+        return badRequest('full_name and organization_name are required for signup');
       }
 
       const { data, error } = await signupWithEmail({
         email,
         password,
-        fullName: full_name,
-        organizationName: organization_name,
+        fullName,
+        organizationName,
         industry
       });
 

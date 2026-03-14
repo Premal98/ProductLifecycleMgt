@@ -10,7 +10,6 @@ export default function SignupPage() {
   const [showPw, setShowPw] = useState(false);
   const [fullName, setFullName] = useState('');
   const [orgName, setOrgName] = useState('');
-  const [industry, setIndustry] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
 
@@ -24,8 +23,7 @@ export default function SignupPage() {
         email,
         password,
         full_name: fullName,
-        organization_name: orgName,
-        industry
+        organization_name: orgName
       })
     });
 
@@ -79,21 +77,13 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-semibold text-slate-700">Industry (optional)</label>
-              <input
-                className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-inner focus:border-slate-400 focus:outline-none"
-                placeholder="Medical devices, industrial automation"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
               <label className="text-sm font-semibold text-slate-700">Full name</label>
               <input
                 className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-inner focus:border-slate-400 focus:outline-none"
                 placeholder="Your name"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
+                required
               />
             </div>
             <div className="space-y-2">

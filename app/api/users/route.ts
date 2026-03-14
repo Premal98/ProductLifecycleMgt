@@ -1,8 +1,14 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { getOrgId, getSessionUser } from '@/lib/auth';
 import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/http';
-import { ROLE_OPTIONS, type AppRole } from '@/types/auth';
-import { inviteUserToOrganization, updateUserRole } from '@/services/authService';
+import { DEFAULT_ROLE_OPTIONS, type AppRole } from '@/types/auth';
+import {
+  createUserInOrganization,
+  deleteUserFromOrganization,
+  inviteUserToOrganization,
+  setUserActiveStatus,
+  updateUserRole
+} from '@/services/authService';
 import { createSupabaseServerClient } from '@/lib/supabaseClient';
 
 export async function GET(req: NextRequest) {
@@ -10,6 +16,10 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) {
       return unauthorized();
+    }
+
+    if (session.role !== 'admin') {
+      return forbidden('Admin only');
     }
 
     const supabase = createSupabaseServerClient(session.accessToken);
@@ -38,9 +48,35 @@ export async function PATCH(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { userId, role } = body as { userId?: string; role?: AppRole };
+    const { action, userId, role, is_active } = body as {
+      action?: 'role' | 'status';
+      userId?: string;
+      role?: AppRole;
+      is_active?: boolean;
+    };
 
-    if (!userId || !role || !ROLE_OPTIONS.includes(role)) {
+    if (!userId) {
+      return badRequest('userId is required');
+    }
+
+    if (action === 'status') {
+      if (typeof is_active !== 'boolean') {
+        return badRequest('is_active must be provided for status updates');
+      }
+
+      if (userId === session.appUserId) {
+        return forbidden('You cannot deactivate your own account');
+      }
+
+      const { data, error } = await setUserActiveStatus(userId, is_active, getOrgId(session));
+      if (error) {
+        return serverError('Failed to update user status', error.message);
+      }
+
+      return ok(data);
+    }
+
+    if (!role || !DEFAULT_ROLE_OPTIONS.includes(role)) {
       return badRequest('userId and valid role are required');
     }
 
@@ -67,10 +103,37 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { email, role } = body as { email?: string; role?: AppRole };
+    const { action, email, role, full_name, password } = body as {
+      action?: 'invite' | 'create';
+      email?: string;
+      role?: AppRole;
+      full_name?: string;
+      password?: string;
+    };
 
-    if (!email || !role || !ROLE_OPTIONS.includes(role)) {
+    if (!email || !role || !DEFAULT_ROLE_OPTIONS.includes(role)) {
       return badRequest('email and valid role are required');
+    }
+
+    if (action === 'create') {
+      const fullName = full_name?.trim() ?? '';
+      if (!fullName || !password) {
+        return badRequest('full_name and password are required for user creation');
+      }
+
+      const { data, error } = await createUserInOrganization({
+        email,
+        fullName,
+        role,
+        organizationId: getOrgId(session),
+        password
+      });
+
+      if (error) {
+        return serverError('Failed to create user', error.message);
+      }
+
+      return ok({ user: data });
     }
 
     const { data, error } = await inviteUserToOrganization({
@@ -87,5 +150,38 @@ export async function POST(req: NextRequest) {
     return ok(data);
   } catch (error) {
     return serverError('Failed to invite user', (error as Error).message);
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await getSessionUser(req);
+    if (!session) {
+      return unauthorized();
+    }
+
+    if (session.role !== 'admin') {
+      return forbidden('Admin only');
+    }
+
+    const body = await req.json().catch(() => ({} as { userId?: string }));
+    const { userId } = body;
+
+    if (!userId) {
+      return badRequest('userId is required');
+    }
+
+    if (userId === session.appUserId) {
+      return forbidden('You cannot delete your own account');
+    }
+
+    const { data, error } = await deleteUserFromOrganization(userId, getOrgId(session));
+    if (error) {
+      return serverError('Failed to delete user', error.message);
+    }
+
+    return ok({ deleted: data });
+  } catch (error) {
+    return serverError('Failed to delete user', (error as Error).message);
   }
 }

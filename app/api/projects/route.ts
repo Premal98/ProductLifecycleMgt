@@ -12,6 +12,10 @@ export async function GET(req: NextRequest) {
       return unauthorized();
     }
 
+    if (!canAccess(session.role, 'projects', 'read')) {
+      return forbidden('Insufficient permissions');
+    }
+
     const supabase = createSupabaseServerClient(session.accessToken);
     const { data, error } = await supabase
       .from('projects')

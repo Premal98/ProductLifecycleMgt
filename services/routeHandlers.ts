@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { ZodTypeAny } from 'zod';
 import { getOrgId, getSessionUser } from '@/lib/auth';
 import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/http';
@@ -19,6 +19,10 @@ export function createCollectionHandlers(options: HandlerOptions) {
       const session = await getSessionUser(req);
       if (options.authRequired !== false && !session) {
         return unauthorized();
+      }
+
+      if (session && options.resource && !canAccess(session.role, options.resource, 'read')) {
+        return forbidden('Insufficient permissions');
       }
 
       if (options.orgScoped === false) {
@@ -94,3 +98,4 @@ export function createCollectionHandlers(options: HandlerOptions) {
 
   return { GET, POST };
 }
+

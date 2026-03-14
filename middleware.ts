@@ -1,7 +1,26 @@
 ﻿import { NextRequest, NextResponse } from 'next/server';
+import { canAccess } from '@/lib/rbac';
 
 const publicRoutes = ['/', '/login', '/signup'];
 const publicApiRoutes = ['/api/auth', '/api/health'];
+const protectedRouteAccess = [
+  { prefix: '/settings/users', resource: 'users' },
+  { prefix: '/settings', resource: 'settings' },
+  { prefix: '/products', resource: 'products' },
+  { prefix: '/projects', resource: 'projects' },
+  { prefix: '/boms', resource: 'boms' },
+  { prefix: '/documents', resource: 'documents' },
+  { prefix: '/cad', resource: 'cad_files' },
+  { prefix: '/suppliers', resource: 'suppliers' },
+  { prefix: '/reports', resource: 'reports' },
+  { prefix: '/dashboard', resource: 'dashboard' }
+];
+
+function matchProtectedResource(pathname: string) {
+  return protectedRouteAccess.find(
+    (entry) => pathname === entry.prefix || pathname.startsWith(`${entry.prefix}/`)
+  )?.resource;
+}
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -29,9 +48,19 @@ export function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/dashboard', req.url));
   }
 
+  if (!pathname.startsWith('/api') && !isPublicPage && hasAccessToken) {
+    const resource = matchProtectedResource(pathname);
+    if (resource) {
+      const role = req.cookies.get('plm-role')?.value || 'viewer';
+      if (!canAccess(role, resource, 'read')) {
+        return NextResponse.redirect(new URL('/dashboard', req.url));
+      }
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/((?!.*\..*|_next).*)']
+  matcher: ['/((?!.*\\..*|_next).*)']
 };

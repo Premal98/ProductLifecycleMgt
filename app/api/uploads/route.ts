@@ -1,7 +1,8 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseClient';
 import { getOrgId, getSessionUser } from '@/lib/auth';
-import { badRequest, created, ok, serverError, unauthorized } from '@/lib/http';
+import { badRequest, created, forbidden, ok, serverError, unauthorized } from '@/lib/http';
+import { canAccess } from '@/lib/rbac';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,6 +18,11 @@ export async function POST(req: NextRequest) {
     const documentId = formData.get('document_id')?.toString() || null;
     const nextVersion = formData.get('version')?.toString();
     const status = formData.get('status')?.toString() || 'draft';
+
+    const resource = type === 'cad' ? 'cad_files' : 'documents';
+    if (!canAccess(session.role, resource, 'write')) {
+      return forbidden('Insufficient permissions');
+    }
 
     if (!file || !(file instanceof File)) return badRequest('File is required');
 

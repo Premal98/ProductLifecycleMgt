@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { badRequest, ok, serverError } from '@/lib/http';
 import { signupWithEmail } from '@/services/authService';
 
@@ -13,15 +13,18 @@ export async function POST(req: NextRequest) {
       industry?: string;
     };
 
-    if (!email || !password || !organization_name) {
-      return badRequest('email, password and organization_name are required');
+    const organizationName = organization_name?.trim() ?? '';
+    const fullName = full_name?.trim() ?? '';
+
+    if (!email || !password || !organizationName || !fullName) {
+      return badRequest('email, password, full_name and organization_name are required');
     }
 
     const { data, error } = await signupWithEmail({
       email,
       password,
-      fullName: full_name,
-      organizationName: organization_name,
+      fullName,
+      organizationName,
       industry
     });
 

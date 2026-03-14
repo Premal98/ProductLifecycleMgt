@@ -1,29 +1,57 @@
-import type { AppRole } from '@/types/auth';
+﻿import type { AppRole } from '@/types/auth';
 
 type Action = 'read' | 'write' | 'admin';
+type RoleGroup = 'admin' | 'engineer' | 'manager' | 'viewer';
 
-type PermissionMap = Record<string, AppRole[]>;
+type PermissionMap = Record<string, RoleGroup[]>;
 
-const WRITE_PERMISSIONS: PermissionMap = {
-  products: ['admin', 'product_manager'],
-  projects: ['admin', 'product_manager'],
-  boms: ['admin', 'product_manager', 'mechanical_engineer', 'electronics_engineer'],
-  cad_files: ['admin', 'mechanical_engineer', 'electronics_engineer'],
-  documents: ['admin', 'product_manager', 'mechanical_engineer', 'electronics_engineer', 'quality_engineer'],
-  suppliers: ['admin', 'procurement_manager'],
-  costs: ['admin', 'procurement_manager'],
-  workflows: ['admin', 'quality_engineer'],
-  changes: ['admin', 'product_manager', 'quality_engineer']
+const ROLE_GROUP_MAP: Record<AppRole, RoleGroup> = {
+  admin: 'admin',
+  engineer: 'engineer',
+  manager: 'manager',
+  viewer: 'viewer',
+  product_manager: 'manager',
+  procurement_manager: 'manager',
+  mechanical_engineer: 'engineer',
+  electronics_engineer: 'engineer',
+  quality_engineer: 'engineer',
+  member: 'viewer'
 };
 
+const READ_PERMISSIONS: PermissionMap = {
+  dashboard: ['admin', 'engineer', 'manager', 'viewer'],
+  products: ['admin', 'engineer', 'manager', 'viewer'],
+  projects: ['admin', 'engineer', 'manager', 'viewer'],
+  boms: ['admin', 'engineer'],
+  documents: ['admin', 'engineer'],
+  cad_files: ['admin', 'engineer'],
+  suppliers: ['admin', 'manager'],
+  reports: ['admin', 'manager'],
+  settings: ['admin'],
+  users: ['admin']
+};
+
+const WRITE_PERMISSIONS: PermissionMap = {
+  products: ['admin', 'engineer'],
+  projects: ['admin', 'manager'],
+  boms: ['admin', 'engineer'],
+  components: ['admin', 'engineer'],
+  documents: ['admin', 'engineer'],
+  cad_files: ['admin', 'engineer'],
+  suppliers: ['admin', 'manager'],
+  reports: ['admin', 'manager'],
+  changes: ['admin', 'manager'],
+  workflows: ['admin', 'manager']
+};
+
+export function normalizeRole(role: string): RoleGroup {
+  return ROLE_GROUP_MAP[role as AppRole] || 'viewer';
+}
+
 export function canAccess(role: string, resource: string, action: Action): boolean {
-  const appRole = role as AppRole;
+  const roleGroup = normalizeRole(role);
 
-  if (appRole === 'admin') {
-    return true;
-  }
-
-  if (action === 'read') {
+  if (roleGroup === 'admin') {
     return true;
   }
 
@@ -31,6 +59,18 @@ export function canAccess(role: string, resource: string, action: Action): boole
     return false;
   }
 
-  const allowed = WRITE_PERMISSIONS[resource] || [];
-  return allowed.includes(appRole);
+  if (action === 'read') {
+    const allowed = READ_PERMISSIONS[resource];
+    if (!allowed) {
+      return true;
+    }
+    return allowed.includes(roleGroup);
+  }
+
+  const allowed = WRITE_PERMISSIONS[resource];
+  if (!allowed) {
+    return false;
+  }
+
+  return allowed.includes(roleGroup);
 }

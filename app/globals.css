@@ -1,4 +1,4 @@
-@tailwind base;
+﻿@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -11,6 +11,7 @@
   --text-muted: #475569;
   --brand: #0f172a;
   --accent: #2563eb;
+  --sidebar-width: 15rem;
 }
 
 @layer base {

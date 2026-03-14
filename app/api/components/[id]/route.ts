@@ -1,6 +1,7 @@
-﻿import { NextRequest } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getOrgId, getSessionUser } from '@/lib/auth';
-import { badRequest, ok, serverError, unauthorized } from '@/lib/http';
+import { badRequest, forbidden, ok, serverError, unauthorized } from '@/lib/http';
+import { canAccess } from '@/lib/rbac';
 import { componentSchema, uuidSchema } from '@/lib/validation';
 import { createSupabaseServerClient } from '@/lib/supabaseClient';
 
@@ -8,6 +9,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const session = await getSessionUser(req);
     if (!session) return unauthorized();
+
+    if (!canAccess(session.role, 'boms', 'write')) {
+      return forbidden('Insufficient permissions');
+    }
+
     const { id } = await params;
     if (!uuidSchema.safeParse(id).success) return badRequest('Invalid component id');
 
@@ -82,6 +88,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   try {
     const session = await getSessionUser(req);
     if (!session) return unauthorized();
+
+    if (!canAccess(session.role, 'boms', 'write')) {
+      return forbidden('Insufficient permissions');
+    }
+
     const { id } = await params;
     if (!uuidSchema.safeParse(id).success) return badRequest('Invalid component id');
 

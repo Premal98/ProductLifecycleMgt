@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { AppShell } from '@/components/AppShell';
 import { CadViewer } from '@/components/CadViewer';
@@ -9,11 +9,27 @@ type CadFile = {
   title: string;
   file_name: string;
   file_url?: string;
+  preview_url?: string;
   product_id?: string | null;
   created_at?: string;
 };
 
 type AiMessage = { role: 'user' | 'assistant'; content: string };
+
+const SUPPORTED_FORMATS = ['gltf', 'glb', 'stl', 'obj'];
+
+function getExtension(value?: string | null) {
+  if (!value) return '';
+  const clean = value.split('?')[0];
+  return clean.split('.').pop()?.toLowerCase() || '';
+}
+
+function isSupportedCadFile(file: CadFile | null) {
+  if (!file) return false;
+  const urlExt = getExtension(file.file_url || file.preview_url || '');
+  const nameExt = getExtension(file.file_name || '');
+  return SUPPORTED_FORMATS.includes(urlExt) || SUPPORTED_FORMATS.includes(nameExt);
+}
 
 const demoCad: CadFile[] = [
   {
@@ -39,7 +55,6 @@ const demoCad: CadFile[] = [
 export default function CadPage() {
   const [items, setItems] = useState<CadFile[]>([]);
   const [selected, setSelected] = useState<CadFile | null>(null);
-  const [wireframe, setWireframe] = useState(false);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [prompt, setPrompt] = useState('');
 
@@ -50,11 +65,14 @@ export default function CadPage() {
       .catch(() => setItems([]));
   }, []);
 
-  const display = useMemo(() => {
-    const source = items.length ? items : demoCad;
-    if (!selected && source.length) setSelected(source[0]);
-    return source;
-  }, [items, selected]);
+  const display = useMemo(() => (items.length ? items : demoCad), [items]);
+
+  useEffect(() => {
+    if (!selected && display.length) {
+      const supported = display.find((file) => isSupportedCadFile(file));
+      setSelected(supported || display[0]);
+    }
+  }, [display, selected]);
 
   function sendPrompt() {
     if (!prompt.trim()) return;
@@ -73,6 +91,9 @@ export default function CadPage() {
     }, 400);
   }
 
+  const selectedSupported = isSupportedCadFile(selected);
+  const selectedUrl = selectedSupported ? selected?.file_url || selected?.preview_url : null;
+
   return (
     <AppShell>
       <div className="grid gap-4 lg:grid-cols-[360px_1fr]">
@@ -80,26 +101,28 @@ export default function CadPage() {
           <section className="plm-panel plm-soft p-5">
             <p className="plm-chip">CAD Vault</p>
             <h2 className="mt-3 text-2xl font-bold">3D CAD Workspace</h2>
-            <p className="mt-2 text-sm text-slate-600">Upload and explore STEP/OBJ/STL files with interactive 3D viewing.</p>
+            <p className="mt-2 text-sm text-slate-600">Upload and explore glTF, OBJ, and STL models with interactive 3D viewing.</p>
           </section>
 
           <section className="plm-panel p-4">
             <p className="text-sm font-semibold text-slate-800">Files</p>
             <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto">
-              {display.map((file) => (
-                <button
-                  key={file.id}
-                  className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${selected?.id === file.id ? 'border-slate-900 bg-slate-50' : 'border-slate-200 hover:bg-slate-50'}`}
-                  onClick={() => setSelected(file)}
-                >
-                  <p className="font-semibold text-slate-900">{file.title}</p>
-                  <p className="text-xs text-slate-500">{file.file_name}</p>
-                </button>
-              ))}
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-sm">
-              <input id="wireframe" type="checkbox" checked={wireframe} onChange={(e) => setWireframe(e.target.checked)} />
-              <label htmlFor="wireframe">Wireframe mode</label>
+              {display.map((file) => {
+                const supported = isSupportedCadFile(file);
+                return (
+                  <button
+                    key={file.id}
+                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${selected?.id === file.id ? 'border-slate-900 bg-slate-50' : 'border-slate-200 hover:bg-slate-50'}`}
+                    onClick={() => setSelected(file)}
+                  >
+                    <p className="font-semibold text-slate-900">{file.title}</p>
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <span>{file.file_name}</span>
+                      {!supported ? <span className="rounded-full border border-slate-200 px-2 py-0.5">Unsupported</span> : null}
+                    </div>
+                  </button>
+                );
+              })}
             </div>
           </section>
 
@@ -138,10 +161,12 @@ export default function CadPage() {
             </div>
           </div>
           <div className="mt-4">
-            {selected?.file_url ? (
-              <CadViewer url={selected.file_url} wireframe={wireframe} />
+            {selectedSupported ? (
+              <CadViewer url={selectedUrl} placeholder="No CAD preview available." />
             ) : (
-              <div className="h-[500px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">No preview available.</div>
+              <div className="h-[480px] rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                Selected CAD file uses an unsupported format. Upload a glTF, GLB, STL, or OBJ file to preview in 3D.
+              </div>
             )}
           </div>
         </div>

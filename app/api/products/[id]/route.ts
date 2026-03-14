@@ -10,6 +10,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     const session = await getSessionUser(_req);
     if (!session) return unauthorized();
 
+    if (!canAccess(session.role, 'products', 'read')) {
+      return forbidden('Insufficient permissions');
+    }
+
     const { id } = await params;
     if (!uuidSchema.safeParse(id).success) return badRequest('Invalid product id');
 

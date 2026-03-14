@@ -12,6 +12,10 @@ export async function GET(req: NextRequest) {
       return unauthorized();
     }
 
+    if (!canAccess(session.role, 'products', 'read')) {
+      return forbidden('Insufficient permissions');
+    }
+
     const { searchParams } = new URL(req.url);
     const orgId = getOrgId(session);
     const supabase = createSupabaseServerClient(session.accessToken);

@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+﻿import { NextRequest } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabaseClient';
 import type { AppRole } from '@/types/auth';
 
@@ -26,11 +26,11 @@ export async function getSessionUser(req: NextRequest): Promise<SessionUser | nu
 
   const { data: appUser } = await supabase
     .from('users')
-    .select('id,organization_id,role,email')
+    .select('id,organization_id,role,email,is_active')
     .eq('auth_user_id', data.user.id)
     .maybeSingle();
 
-  if (!appUser) {
+  if (!appUser || appUser.is_active === false) {
     return null;
   }
 
