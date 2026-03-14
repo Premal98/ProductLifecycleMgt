@@ -1,0 +1,338 @@
+﻿import { getSupabaseAdminClient } from '@/lib/supabaseAdminClient';
+import type { AppRole } from '@/types/auth';
+
+type SeedContext = {
+  organizationId: string;
+  ownerUserId?: string;
+  ownerRole?: AppRole;
+};
+
+const mkId = () => crypto.randomUUID();
+
+export async function ensureDemoDataForOrg(ctx: SeedContext) {
+  const admin = getSupabaseAdminClient();
+  const { organizationId, ownerUserId } = ctx;
+
+  // Skip if data already exists
+  const { count: existingProducts } = await admin
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('organization_id', organizationId);
+  if ((existingProducts || 0) > 0) return;
+
+  const suppliers = [
+    { id: mkId(), organization_id: organizationId, name: 'Precision Sensorics', contact_name: 'Elena Varga', email: 'sales@precisionsensorics.com', certifications: 'ISO9001, ISO13485', rating: 4.7 },
+    { id: mkId(), organization_id: organizationId, name: 'CircuitForge Electronics', contact_name: 'Ravi Menon', email: 'account@circuitforge.com', certifications: 'IPC-A-610 Class 3', rating: 4.5 },
+    { id: mkId(), organization_id: organizationId, name: 'MedPolymer Solutions', contact_name: 'Grace Liu', email: 'orders@medpolymer.io', certifications: 'ISO13485, USP Class VI', rating: 4.6 },
+    { id: mkId(), organization_id: organizationId, name: 'Steelwave Machining', contact_name: 'Jonas Becker', email: 'rfq@steelwave.com', certifications: 'AS9100', rating: 4.4 },
+    { id: mkId(), organization_id: organizationId, name: 'OptiTherm Components', contact_name: 'Mei Tan', email: 'hello@optitherm.parts', certifications: 'ISO9001', rating: 4.3 },
+    { id: mkId(), organization_id: organizationId, name: 'Apex PCB Fabrication', contact_name: 'Carlos Jimenez', email: 'service@apexpcb.com', certifications: 'IPC-6012 Class 3', rating: 4.8 }
+  ];
+
+  const products = [
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'MediFlow Smart Infusion Pump',
+      sku: 'MED-INF-500',
+      lifecycle_stage: 'engineering_validation',
+      status: 'active',
+      version: 'v2',
+      description: 'Closed-loop infusion control with redundancy and drug library.',
+      category: 'Medical Device',
+      compliance_status: 'IEC 60601 underway',
+      weight: 2.4,
+      dimensions: '220 x 140 x 90 mm',
+      created_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'PulseWave Portable ECG Monitor',
+      sku: 'MED-ECG-210',
+      lifecycle_stage: 'prototype',
+      status: 'active',
+      version: 'v1',
+      description: 'Handheld 6-lead ECG with BLE and cloud export.',
+      category: 'Medical Device',
+      compliance_status: 'CE pre-cert',
+      weight: 0.35,
+      dimensions: '140 x 75 x 20 mm',
+      created_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'AeroSense Industrial Air Quality Sensor',
+      sku: 'IND-AQS-330',
+      lifecycle_stage: 'design',
+      status: 'active',
+      version: 'v1',
+      description: 'Industrial air quality and VOC sensor with edge analytics.',
+      category: 'Industrial',
+      compliance_status: 'ATEX pending',
+      weight: 0.65,
+      dimensions: '120 x 120 x 60 mm',
+      created_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'NovaPulse Portable Patient Monitor',
+      sku: 'MED-NPM-300',
+      lifecycle_stage: 'design',
+      status: 'active',
+      version: 'v1',
+      description: 'Handheld vital signs monitor for transport teams.',
+      category: 'Medical Device',
+      compliance_status: 'IEC 60601 planned',
+      weight: 1.1,
+      dimensions: '190 x 110 x 60 mm',
+      created_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'IronTrack Smart Conveyor Controller',
+      sku: 'IND-CNV-410',
+      lifecycle_stage: 'production',
+      status: 'active',
+      version: 'v3',
+      description: 'Industrial controller with predictive maintenance analytics.',
+      category: 'Industrial',
+      compliance_status: 'CE, UL',
+      weight: 3.2,
+      dimensions: '240 x 180 x 80 mm',
+      created_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'Sentinel S1 Smart Security Camera',
+      sku: 'CON-CAM-710',
+      lifecycle_stage: 'prototype',
+      status: 'active',
+      version: 'v1',
+      description: 'PoE outdoor camera with edge AI event detection.',
+      category: 'Consumer',
+      compliance_status: 'FCC/CE pending',
+      weight: 0.48,
+      dimensions: '105 x 70 x 70 mm',
+      created_by: ownerUserId
+    }
+  ];
+
+  const projects = products.map((p, i) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    product_id: p.id,
+    name: `${p.sku} Development`,
+    description: `Cross-functional development for ${p.name}.`,
+    owner_id: ownerUserId,
+    status: i % 2 === 0 ? 'in_progress' : 'planning',
+    start_date: `2026-0${(i % 3) + 1}-05`,
+    due_date: `2026-1${(i % 3) + 0}-20`
+  }));
+
+  const milestoneNames = ['Concept Design', 'Prototype Build', 'Engineering Validation', 'Manufacturing Prep'];
+  const milestones = projects.flatMap((project, pi) =>
+    milestoneNames.map((name, mi) => ({
+      id: mkId(),
+      organization_id: organizationId,
+      project_id: project.id,
+      name,
+      description: `${name} milestone for ${project.name}`,
+      due_date: `2026-${String(2 + mi).padStart(2, '0')}-${String(10 + pi).padStart(2, '0')}`,
+      status: mi === 0 ? 'completed' : mi === 1 ? 'in_progress' : 'pending'
+    }))
+  );
+
+  const tasks = milestones.slice(0, 18).map((m, i) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    project_id: m.project_id,
+    milestone_id: m.id,
+    title: `Task ${i + 1}: ${m.name}`,
+    description: `Execute ${m.name} for project ${m.project_id}.`,
+    assignee_id: ownerUserId,
+    status: i % 3 === 0 ? 'completed' : i % 3 === 1 ? 'in_progress' : 'pending',
+    priority: i % 2 === 0 ? 'high' : 'medium',
+    due_date: m.due_date
+  }));
+
+  const boms = products.map((p) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    product_id: p.id,
+    bom_number: `${p.sku}-BOM`,
+    revision: 'A',
+    status: 'draft',
+    created_by: ownerUserId
+  }));
+
+  const components = [
+    { bom: 0, supplier: 0, part_number: 'MCU-STM32H7', name: 'High-speed MCU', quantity: 1, unit: 'pcs', unit_cost: 18.5 },
+    { bom: 0, supplier: 1, part_number: 'PCB-6L-0.8', name: '6 Layer Rigid PCB', quantity: 1, unit: 'pcs', unit_cost: 12.3 },
+    { bom: 0, supplier: 2, part_number: 'MED-ELAST-01', name: 'Medical Grade Elastomer Gasket', quantity: 2, unit: 'pcs', unit_cost: 2.4 },
+    { bom: 1, supplier: 3, part_number: 'DRV-MTR-48V', name: 'Motor Driver Module', quantity: 1, unit: 'pcs', unit_cost: 22.1 },
+    { bom: 1, supplier: 4, part_number: 'HTSN-NTC-10K', name: 'Industrial NTC Sensor', quantity: 3, unit: 'pcs', unit_cost: 3.2 },
+    { bom: 2, supplier: 5, part_number: 'OPT-LENS-4MM', name: 'Optical Lens Assembly', quantity: 1, unit: 'pcs', unit_cost: 9.5 },
+    { bom: 2, supplier: 0, part_number: 'SNR-CMOS-4K', name: '4K CMOS Sensor', quantity: 1, unit: 'pcs', unit_cost: 24.0 },
+    { bom: 3, supplier: 1, part_number: 'PCB-4L-1.6', name: '4 Layer PCB', quantity: 1, unit: 'pcs', unit_cost: 7.8 },
+    { bom: 4, supplier: 2, part_number: 'CUFF-MAT-01', name: 'Cuff Material Kit', quantity: 1, unit: 'set', unit_cost: 5.7 },
+    { bom: 5, supplier: 0, part_number: 'PUMP-DRV-12V', name: 'Dual-Redundant Pump Driver', quantity: 1, unit: 'pcs', unit_cost: 31.0 }
+  ].map((c) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    bom_id: boms[c.bom].id,
+    supplier_id: suppliers[c.supplier].id,
+    parent_component_id: null,
+    part_number: c.part_number,
+    name: c.name,
+    quantity: c.quantity,
+    unit: c.unit,
+    unit_cost: c.unit_cost
+  }));
+
+  const documents = [
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      product_id: products[0].id,
+      project_id: projects[0].id,
+      title: 'Product Specification',
+      document_number: `${products[0].sku}-DOC-01`,
+      version: 'v1',
+      status: 'approved',
+      file_type: 'application/pdf',
+      file_name: 'product_specification.pdf',
+      file_path: `documents/${products[0].sku.toLowerCase()}-spec.pdf`,
+      file_url: `https://supabase.local/documents/${products[0].sku.toLowerCase()}-spec.pdf`,
+      mime_type: 'application/pdf',
+      size_bytes: 150000,
+      uploaded_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      product_id: products[1].id,
+      project_id: projects[1].id,
+      title: 'Electrical Diagram',
+      document_number: `${products[1].sku}-DOC-02`,
+      version: 'v1',
+      status: 'review',
+      file_type: 'application/pdf',
+      file_name: 'electrical_diagram.pdf',
+      file_path: `documents/${products[1].sku.toLowerCase()}-diagram.pdf`,
+      file_url: `https://supabase.local/documents/${products[1].sku.toLowerCase()}-diagram.pdf`,
+      mime_type: 'application/pdf',
+      size_bytes: 110000,
+      uploaded_by: ownerUserId
+    },
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      product_id: products[2].id,
+      project_id: projects[2].id,
+      title: 'Manufacturing Guide',
+      document_number: `${products[2].sku}-DOC-03`,
+      version: 'v2',
+      status: 'draft',
+      file_type: 'application/pdf',
+      file_name: 'manufacturing_guide.pdf',
+      file_path: `documents/${products[2].sku.toLowerCase()}-mfg.pdf`,
+      file_url: `https://supabase.local/documents/${products[2].sku.toLowerCase()}-mfg.pdf`,
+      mime_type: 'application/pdf',
+      size_bytes: 130000,
+      uploaded_by: ownerUserId
+    }
+  ];
+
+  const cadFiles = products.slice(0, 4).map((p, i) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    product_id: p.id,
+    title: `Enclosure Design ${i + 1}`,
+    file_name: 'enclosure_design.step',
+    file_path: `cad-files/${p.sku.toLowerCase()}-enclosure.step`,
+    file_url: `https://supabase.local/cad-files/${p.sku.toLowerCase()}-enclosure.step`,
+    preview_url: null,
+    uploaded_by: ownerUserId
+  }));
+
+  const changeOrders = products.slice(0, 3).map((p, i) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    product_id: p.id,
+    project_id: projects[i].id,
+    order_number: `ECO-${100 + i}`,
+    title: ['Replace sensor module', 'Redesign enclosure for thermal headroom', 'Upgrade PCB revision'][i],
+    description: 'Engineering change driven by validation findings.',
+    status: i === 0 ? 'open' : 'in_review',
+    priority: i === 0 ? 'high' : 'medium',
+    requested_by: ownerUserId,
+    approved_by: null
+  }));
+
+  const workflows = [
+    {
+      id: mkId(),
+      organization_id: organizationId,
+      name: 'ECO Default Workflow',
+      entity_type: 'change_order',
+      status: 'active',
+      definition: { steps: ['Draft', 'Engineering Review', 'Quality Review', 'Release'] }
+    }
+  ];
+
+  const approvals = changeOrders.map((co) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    workflow_id: workflows[0].id,
+    change_order_id: co.id,
+    approver_id: ownerUserId,
+    status: co.status === 'open' ? 'pending' : 'approved',
+    comments: 'Auto-seeded approval route'
+  }));
+
+  const comments = changeOrders.map((co) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    entity_type: 'change_order',
+    entity_id: co.id,
+    user_id: ownerUserId,
+    content: 'Seeded discussion: align mechanical and electrical changes.'
+  }));
+
+  const costs = components.slice(0, 6).map((comp) => ({
+    id: mkId(),
+    organization_id: organizationId,
+    product_id: boms.find((b) => b.id === comp.bom_id)?.product_id,
+    component_id: comp.id,
+    cost_type: 'component',
+    amount: comp.unit_cost,
+    currency: 'USD',
+    effective_date: '2026-03-01'
+  }));
+
+  const notifications = [
+    { id: mkId(), organization_id: organizationId, user_id: ownerUserId, title: 'Welcome to PLM Workspace', message: 'Demo data loaded for your organization.', is_read: false, metadata: {} },
+    { id: mkId(), organization_id: organizationId, user_id: ownerUserId, title: 'ECO ECO-100 pending', message: 'Engineering review required for sensor module change.', is_read: false, metadata: { change_order: changeOrders[0].id } }
+  ];
+
+  await admin.from('suppliers').upsert(suppliers);
+  await admin.from('products').upsert(products);
+  await admin.from('projects').upsert(projects);
+  await admin.from('milestones').upsert(milestones);
+  await admin.from('tasks').upsert(tasks);
+  await admin.from('boms').upsert(boms);
+  await admin.from('components').upsert(components);
+  await admin.from('documents').upsert(documents);
+  await admin.from('cad_files').upsert(cadFiles);
+  await admin.from('change_orders').upsert(changeOrders);
+  await admin.from('workflows').upsert(workflows);
+  await admin.from('approvals').upsert(approvals);
+  await admin.from('comments').upsert(comments);
+  await admin.from('costs').upsert(costs);
+  await admin.from('notifications').upsert(notifications);
+}
